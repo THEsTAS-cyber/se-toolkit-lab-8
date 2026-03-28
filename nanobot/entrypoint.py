@@ -1,14 +1,14 @@
+
 #!/usr/bin/env python3
 """Resolve environment variables into config and launch nanobot gateway."""
 
 import json
 import os
-import sys
 from pathlib import Path
 
 def main():
     config_path = Path("/app/nanobot/config.json")
-    resolved_path = Path("/app/nanobot/config.resolved.json")
+    resolved_path = Path("/tmp/config.resolved.json")
     workspace_path = Path("/app/nanobot/workspace")
     
     # Load config
@@ -35,9 +35,10 @@ def main():
     with open(resolved_path, "w") as f:
         json.dump(config, f, indent=2)
     
-    # Launch nanobot gateway
-    os.execvp("nanobot", [
-        "nanobot", "gateway",
+    # Launch nanobot gateway using full path
+    nanobot_bin = "/app/nanobot/.venv/bin/nanobot"
+    os.execv(nanobot_bin, [
+        nanobot_bin, "gateway",
         "--config", str(resolved_path),
         "--workspace", str(workspace_path)
     ])

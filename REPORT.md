@@ -214,11 +214,15 @@ submissions yet.
 
 ## Task 2A — Deployed agent
 
-<!-- Paste a short nanobot startup log excerpt showing the gateway started inside Docker -->
+nanobot-1 | Using config: /tmp/config.resolved.json
+nanobot-1 | 🐈 Starting nanobot gateway version 0.1.4.post5 on port 18790…
+nanobot-1 | ✓ Channels enabled: webchat
+nanobot-1 | MCP server ‘lms’: connected, 9 tools registered
+nanobot-1 | Agent loop started
 
 ## Task 2B — Web client
 
-<!-- Screenshot of a conversation with the agent in the Flutter web app -->
+![Web Client Screenshot](images/screenshot.png)
 
 ## Task 3A — Structured logging
 

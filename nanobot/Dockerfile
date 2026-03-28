@@ -1,78 +1,38 @@
-В Task 2 нужно:
-
-Создать Docker-образ nanobot (вместо запуска через uv run)
-Добавить WebSocket канал для веб-клиента
-Запустить Flutter веб-клиент для чата
-План для Part A:
-
-Сначала завершите Task 1 — оформите REPORT.md с ответами из Part A, B, C.
-
-Затем для Task 2 создайте файлы:
-
-1. nanobot/entrypoint.py — скрипт, который читает config.json, подставляет env vars и запускает nanobot gateway:
-
-#!/usr/bin/env python3
-"""Resolve environment variables into config and launch nanobot gateway."""
-
-import json
-import os
-import sys
-from pathlib import Path
-
-def main():
-    config_path = Path("/app/nanobot/config.json")
-    resolved_path = Path("/app/nanobot/config.resolved.json")
-    workspace_path = Path("/app/nanobot/workspace")
-    
-    # Load config
-    with open(config_path) as f:
-        config = json.load(f)
-    
-    # Override from env vars
-    if llm_key := os.environ.get("LLM_API_KEY"):
-        config["providers"]["custom"]["apiKey"] = llm_key
-    if llm_base := os.environ.get("LLM_API_BASE_URL"):
-        config["providers"]["custom"]["apiBase"] = llm_base
-    if llm_model := os.environ.get("LLM_API_MODEL"):
-        config["agents"]["defaults"]["model"] = llm_model
-    if gateway_host := os.environ.get("NANOBOT_GATEWAY_CONTAINER_ADDRESS"):
-        config["gateway"]["host"] = gateway_host
-    if gateway_port := os.environ.get("NANOBOT_GATEWAY_CONTAINER_PORT"):
-        config["gateway"]["port"] = int(gateway_port)
-    if lms_url := os.environ.get("NANOBOT_LMS_BACKEND_URL"):
-        config["tools"]["mcpServers"]["lms"]["env"]["NANOBOT_LMS_BACKEND_URL"] = lms_url
-    if lms_key := os.environ.get("NANOBOT_LMS_API_KEY"):
-        config["tools"]["mcpServers"]["lms"]["env"]["NANOBOT_LMS_API_KEY"] = lms_key
-    
-    # Write resolved config
-    with open(resolved_path, "w") as f:
-        json.dump(config, f, indent=2)
-    
-    # Launch nanobot gateway
-    os.execvp("nanobot", [
-        "nanobot", "gateway",
-        "--config", str(resolved_path),
-        "--workspace", str(workspace_path)
-    ])
-
-if __name__ == "__main__":
-    main()
-2. nanobot/Dockerfile — multi-stage build:
 
 # Stage 1: Build
 FROM ghcr.io/astral-sh/uv:python3.14-bookworm AS builder
 
-WORKDIR /app
-
-# Copy workspace first (changes often)
+WORKDIR /app/nanobot
+COPY --chown=app:app config.json pyproject.toml entrypoint.py ./
 COPY --chown=app:app workspace/ ./workspace/
+# Copy from nanobot context
+COPY --chown=app:app workspace/ ./workspace/
+COPY --chown=app:app pyproject.toml entrypoint.py ./
 
-# Copy project files
-COPY --chown=app:app pyproject.toml uv.lock ./
-COPY --chown=app:app entrypoint.py ./nanobot/
-
-# Install dependencies
+# Generate lock and install base nanobot
+RUN uv lock
 RUN uv sync --frozen --no-dev
+
+# Copy MCP packages from workspace context
+COPY --from=workspace --chown=app:app /mcp/mcp-lms /tmp/mcp-lms
+COPY --from=workspace --chown=app:app /nanobot-websocket-channel/nanobot-webchat /tmp/nanobot-webchat
+COPY --from=workspace --chown=app:app /nanobot-websocket-channel/mcp-webchat /tmp/mcp-webchat
+COPY --from=workspace --chown=app:app /nanobot-websocket-channel/nanobot-channel-protocol /tmp/nanobot-channel-protocol
+
+# Install build dependencies
+RUN uv pip install --python /app/nanobot/.venv/bin/python setuptools wheel
+
+# Remove workspace sources from pyproject.toml files
+RUN sed -i '/\[tool.uv.sources\]/,/^\[/d' /tmp/mcp-lms/pyproject.toml 2>/dev/null || true
+RUN sed -i '/\[tool.uv.sources\]/,/^\[/d' /tmp/nanobot-channel-protocol/pyproject.toml 2>/dev/null || true
+RUN sed -i '/\[tool.uv.sources\]/,/^\[/d' /tmp/nanobot-webchat/pyproject.toml 2>/dev/null || true
+RUN sed -i '/\[tool.uv.sources\]/,/^\[/d' /tmp/mcp-webchat/pyproject.toml 2>/dev/null || true
+
+# Install MCP packages in dependency order
+RUN uv pip install --python /app/nanobot/.venv/bin/python -e /tmp/nanobot-channel-protocol
+RUN uv pip install --python /app/nanobot/.venv/bin/python -e /tmp/mcp-lms
+RUN uv pip install --python /app/nanobot/.venv/bin/python -e /tmp/mcp-webchat
+RUN uv pip install --python /app/nanobot/.venv/bin/python -e /tmp/nanobot-webchat
 
 # Stage 2: Runtime
 FROM ghcr.io/astral-sh/uv:python3.14-bookworm-slim
@@ -83,16 +43,15 @@ ARG APP_GID=1000
 RUN groupadd --gid $APP_GID app && \
     useradd --uid $APP_UID --gid $APP_GID --shell /bin/bash --create-home app
 
-WORKDIR /app
+WORKDIR /app/nanobot
 
 # Copy from builder
-COPY --from=builder --chown=app:app /app/.venv /app/.venv
-COPY --from=builder --chown=app:app /app/workspace /app/nanobot/workspace
-COPY --from=builder --chown=app:app /app/entrypoint.py /app/nanobot/entrypoint.py
-COPY --from=builder --chown=app:app /app/pyproject.toml /app/nanobot/
-COPY --from=builder --chown=app:app /app/uv.lock /app/nanobot/
+COPY --from=builder --chown=app:app /app/nanobot/.venv /app/nanobot/.venv
+COPY --from=builder --chown=app:app /app/nanobot/workspace /app/nanobot/workspace
+COPY --from=builder --chown=app:app /app/nanobot/entrypoint.py /app/nanobot/entrypoint.py
+COPY --from=builder --chown=app:app /app/nanobot/pyproject.toml /app/nanobot/pyproject.toml
 
-ENV PATH="/app/.venv/bin:$PATH"
+ENV PATH="/app/nanobot/.venv/bin:$PATH"
 
 USER app
 
