@@ -1,3 +1,5 @@
+
+​# Ignore common files
 .DS_Store
 __pycache__/
 *.pyc
@@ -6,21 +8,13 @@ __pycache__/
 venv/
 .venv/
 
-.dockerignore
-
-.gitignore
-.git/
-
+# Ignore these directories
 .github/
-
 .vscode/
-
-.env
-
 tests/
 docs/
 
-docker-compose.yml
-Dockerfile
-
-*.md
+# Ignore sensitive files
+.env.secret
+*.key
+*.pem
