@@ -32,8 +32,20 @@ def main():
     
     # Observability MCP server environment variables
     if obs_logs_url := os.environ.get("NANOBOT_VICTORIALOGS_URL"):
+        if "obs" not in config["tools"]["mcpServers"]:
+            config["tools"]["mcpServers"]["obs"] = {
+                "command": "python",
+                "args": ["-m", "mcp_obs"],
+                "env": {}
+            }
         config["tools"]["mcpServers"]["obs"]["env"]["VICTORIALOGS_URL"] = obs_logs_url
     if obs_traces_url := os.environ.get("NANOBOT_VICTORIATRACES_URL"):
+        if "obs" not in config["tools"]["mcpServers"]:
+            config["tools"]["mcpServers"]["obs"] = {
+                "command": "python",
+                "args": ["-m", "mcp_obs"],
+                "env": {}
+            }
         config["tools"]["mcpServers"]["obs"]["env"]["VICTORIATRACES_URL"] = obs_traces_url
     
     # Webchat channel environment variables
@@ -42,8 +54,20 @@ def main():
     if webchat_port := os.environ.get("NANOBOT_WEBCHAT_CONTAINER_PORT"):
         config["channels"]["webchat"]["port"] = int(webchat_port)
     if webchat_relay_url := os.environ.get("MCP_WEBSOCKET_UI_RELAY_URL"):
+        if "webchat" not in config["tools"]["mcpServers"]:
+            config["tools"]["mcpServers"]["webchat"] = {
+                "command": "python",
+                "args": ["-m", "mcp_webchat"],
+                "env": {}
+            }
         config["tools"]["mcpServers"]["webchat"]["env"]["MCP_WEBSOCKET_UI_RELAY_URL"] = webchat_relay_url
     if webchat_relay_token := os.environ.get("MCP_WEBSOCKET_UI_RELAY_TOKEN"):
+        if "webchat" not in config["tools"]["mcpServers"]:
+            config["tools"]["mcpServers"]["webchat"] = {
+                "command": "python",
+                "args": ["-m", "mcp_webchat"],
+                "env": {}
+            }
         config["tools"]["mcpServers"]["webchat"]["env"]["MCP_WEBSOCKET_UI_RELAY_TOKEN"] = webchat_relay_token
 
     # Write resolved config
