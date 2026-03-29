@@ -7,8 +7,9 @@ WORKDIR /app/nanobot
 COPY config.json pyproject.toml entrypoint.py ./
 COPY workspace/ ./workspace/
 
-# Install base nanobot using direct URL
-RUN uv pip install "nanobot-ai @ https://github.com/HKUDS/nanobot/archive/e7d371ec1e6531b28898ec2c869ef338e8dd46ec.zip"
+# Create virtual environment and install packages
+RUN uv venv && \
+    uv pip install "nanobot-ai @ https://github.com/HKUDS/nanobot/archive/e7d371ec1e6531b28898ec2c869ef338e8dd46ec.zip"
 
 # Copy MCP packages from workspace context
 COPY --from=workspace /mcp/mcp-lms /tmp/mcp-lms
