@@ -12,6 +12,14 @@ COPY --from=workspace /nanobot-websocket-channel/nanobot-channel-protocol /tmp/n
 COPY --from=workspace /nanobot-websocket-channel/mcp-webchat /tmp/mcp-webchat
 COPY --from=workspace /nanobot-websocket-channel/nanobot-webchat /tmp/nanobot-webchat
 
+# Remove workspace sources from all MCP packages
+RUN sed -i '/\[tool.uv.sources\]/,/^\[/d' /tmp/mcp-lms/pyproject.toml && \
+    sed -i '/\[tool.uv.sources\]/,/^\[/d' /tmp/mcp-obs/pyproject.toml && \
+    sed -i '/\[tool.uv.sources\]/,/^\[/d' /tmp/nanobot-channel-protocol/pyproject.toml && \
+    sed -i '/\[tool.uv.sources\]/,/^\[/d' /tmp/mcp-webchat/pyproject.toml && \
+    sed -i '/\[tool.uv.sources\]/,/^\[/d' /tmp/nanobot-webchat/pyproject.toml
+
+# Install in dependency order
 RUN uv pip install -e /tmp/nanobot-channel-protocol && \
     uv pip install -e /tmp/mcp-lms && \
     uv pip install -e /tmp/mcp-obs && \
