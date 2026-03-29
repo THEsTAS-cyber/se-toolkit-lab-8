@@ -1,4 +1,3 @@
-
 # Stage 1: Build
 FROM ghcr.io/astral-sh/uv:python3.14-bookworm AS builder
 
@@ -15,6 +14,7 @@ RUN uv sync --frozen --no-dev
 
 # Copy MCP packages from workspace context
 COPY --from=workspace --chown=app:app /mcp/mcp-lms /tmp/mcp-lms
+COPY --from=workspace --chown=app:app /mcp/mcp-obs /tmp/mcp-obs
 COPY --from=workspace --chown=app:app /nanobot-websocket-channel/nanobot-webchat /tmp/nanobot-webchat
 COPY --from=workspace --chown=app:app /nanobot-websocket-channel/mcp-webchat /tmp/mcp-webchat
 COPY --from=workspace --chown=app:app /nanobot-websocket-channel/nanobot-channel-protocol /tmp/nanobot-channel-protocol
@@ -24,6 +24,7 @@ RUN uv pip install --python /app/nanobot/.venv/bin/python setuptools wheel
 
 # Remove workspace sources from pyproject.toml files
 RUN sed -i '/\[tool.uv.sources\]/,/^\[/d' /tmp/mcp-lms/pyproject.toml 2>/dev/null || true
+RUN sed -i '/\[tool.uv.sources\]/,/^\[/d' /tmp/mcp-obs/pyproject.toml 2>/dev/null || true
 RUN sed -i '/\[tool.uv.sources\]/,/^\[/d' /tmp/nanobot-channel-protocol/pyproject.toml 2>/dev/null || true
 RUN sed -i '/\[tool.uv.sources\]/,/^\[/d' /tmp/nanobot-webchat/pyproject.toml 2>/dev/null || true
 RUN sed -i '/\[tool.uv.sources\]/,/^\[/d' /tmp/mcp-webchat/pyproject.toml 2>/dev/null || true
@@ -31,6 +32,7 @@ RUN sed -i '/\[tool.uv.sources\]/,/^\[/d' /tmp/mcp-webchat/pyproject.toml 2>/dev
 # Install MCP packages in dependency order
 RUN uv pip install --python /app/nanobot/.venv/bin/python -e /tmp/nanobot-channel-protocol
 RUN uv pip install --python /app/nanobot/.venv/bin/python -e /tmp/mcp-lms
+RUN uv pip install --python /app/nanobot/.venv/bin/python -e /tmp/mcp-obs
 RUN uv pip install --python /app/nanobot/.venv/bin/python -e /tmp/mcp-webchat
 RUN uv pip install --python /app/nanobot/.venv/bin/python -e /tmp/nanobot-webchat
 
